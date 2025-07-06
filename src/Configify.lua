@@ -11,28 +11,28 @@
     DevForum discussion: https://devforum.roblox.com/t/configify-a-runtime-constantconfig-editor/3186154
 
     Functions:
-
-        Configify.new() -> Configify Object (injects into client environment)
+        Configify.new() -> Configify Object (injects into global environment)
 
 
     Methods:
-
         Configify:Set(config_name, initial_value, min_value, max_value): () -> current config value
             config_name   [string] -- name that will be stored for your value
             initial_value [any attribute value] -- initial value for your config, some attribute types not yet supported
             min_value     [same type as initial_value] -- min value if your config is a number (for slider)
             max_value     [same type as initial_value] -- max value if your config is a number (for slider)
 
+        Configify:Get(config_name): () -> current config value
+
 
     USAGE:
-        -- Some main client script
-        require(path.to.configify) -- Will automatically initialize into client env
+        -- Some main script (must happen first)
+        require(path.to.configify)
 
         -- Your script
         local CONSTANT = _G.Cfg:Set("MY_CONSTANT", 50, 0, 100) -- initialize MY_CONSTANT to 50, min is 0 and max is 100
 
         some_event:Connect(function()
-            print(CONSTANT()) -- Prints the current value of MY_CONSTANT
+            print(CONSTANT()) -- prints the current value of MY_CONSTANT
         end)
 ]]
 

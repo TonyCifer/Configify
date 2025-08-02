@@ -9,6 +9,7 @@ local players = game:GetService("Players")
 local player = players.LocalPlayer
 local player_gui = player:WaitForChild("PlayerGui")
 
+local const = require(script.Parent.Constants)
 local assets = script.Parent:WaitForChild("Assets")
 
 local interface = {}
@@ -17,7 +18,14 @@ interface.__index = interface
 function interface.new()
 	local self = setmetatable({}, interface)
 
-	self.ui = assets:FindFirstChild("Configify")
+	self.ui = assets:WaitForChild("Configify")
+	self.config_container = self.ui.Container.ConfigContainer
+	self.env_container = self.ui.Container.EnvContainer
+	self.tab_container = self.ui.Container.TabContainer
+	self.resize_ui = self.ui.Container.Resize
+	self.drag_ui = self.ui.Container.Drag
+	self.export_server = self.tab_container.Server.Export
+	self.export_client = self.tab_container.Client.Export
 
 	self:_Init()
 
@@ -26,33 +34,94 @@ end
 
 function interface:_Init()
 	self.ui.Parent = player_gui
+
+	self:_SetupDragAndResize()
+	self:_ConnectButtons()
+
+	self:_SelectEnv("Client")
+end
+
+function interface:_SetupDragAndResize()
+	-- local drag = drag.new(self.drag_ui)
+	-- drag.MouseMoved:Connect(function(delta)
+	-- 	local goal = UDim2.fromOffset(
+	-- 		mouse.X + offset.X, 
+	-- 		mouse.Y + offset.Y + env_container.Size.Y.Offset + tab_container.Size.Y.Offset
+	-- 	)
+	-- 	ui.Container.Position = ui.Container.Position:Lerp(goal, DRAG_LERP_ALPHA)
+	-- end)
+	-- drag.Click:Connect(function()
+	-- 	env_container.Visible = not env_container.Visible
+	-- 	ui.Container.ScrollingFrame.Visible = not ui.Container.ScrollingFrame.Visible
+	-- 	tab_container.Visible = not tab_container.Visible
+	-- 	resize_btn.Visible = not resize_btn.Visible
+
+	-- 	local container_size_Y = ui.Container.Size.Y.Offset
+	-- 	local stored_size_Y = ui.Container:GetAttribute("PreviousSize")
+
+	-- 	if container_size_Y == 0 then
+	-- 		-- was closed, open
+	-- 		ui.Container.Size = UDim2.fromOffset(ui.Container.Size.X.Offset, stored_size_Y or 0)
+	-- 	else
+	-- 		-- was open, close
+	-- 		ui.Container:SetAttribute("PreviousSize", ui.Container.Size.Y.Offset)
+	-- 		ui.Container.Size = UDim2.fromOffset(ui.Container.Size.X.Offset, 0)
+	-- 	end
+	-- end)
+
+	-- local resize = drag.new(self.resize_ui)
+	-- resize.MouseMoved:Connect(function(delta)
+	-- 	local goal = UDim2.fromOffset(
+	-- 		math.max(ui.Container.Size.X.Offset - (mouse_delta.X * RESIZING_SPEED), MIN_SIZE_X),
+	-- 		ui.Container.Size.Y.Offset - (mouse_delta.Y * RESIZING_SPEED)
+	-- 	)
+
+	-- 	ui.Container.Size = ui.Container.Size:Lerp(goal, RESIZE_LERP_ALPHA)
+	-- end)
+end
+
+function interface:_ConnectButtons()
+	local cl_btn = self.env_container.ClientBtn
+	local sv_btn = self.env_container.ServerBtn
+
+	local function hover(toggle, ui_obj)
+		for _, v in ui_obj:GetDescendants() do
+			if v:IsA("UIStroke") then
+				v.Color = toggle and const.UI.COLOR_E or const.UI.COLOR_D
+			end
+		end
+	end
+
+	cl_btn.MouseEnter:Connect(function()
+		hover(true, cl_btn)
+	end)
+	cl_btn.MouseLeave:Connect(function()
+		hover(false, cl_btn)
+	end)
+
+	sv_btn.MouseEnter:Connect(function()
+		hover(true, sv_btn)
+	end)
+	sv_btn.MouseLeave:Connect(function()
+		hover(false, sv_btn)
+	end)
+
+	self.env_container.ClientBtn.MouseButton1Click:Connect(function()
+		self:_SelectEnv("Client")
+	end)
+
+	self.env_container.ServerBtn.MouseButton1Click:Connect(function()
+		self:_SelectEnv("Server")
+	end)
+end
+
+function interface:_SelectEnv(env: "Client" | "Server")
+	print(`Selecting env: {env}`)
 end
 
 return interface
 
 -- function configify_ui:_Init()
--- 	self._ScreenGui = ui
-
--- 	local scrolling_frame = ui.Container.ScrollingFrame
--- 	local env_container = ui.Container.EnvContainer
--- 	local tab_container = ui.Container.TabContainer
--- 	local drag_btn: TextButton = ui.Container.Drag
--- 	local resize_btn: ImageButton = ui.Container.Resize
-
--- 	local export_client: TextButton = tab_container.Client.Export
--- 	local export_server = tab_container.Server.Export
-
--- 	-- export logic
--- 	local function export()
--- 		if self._current_tab == nil then
--- 			return
--- 		end
-
--- 		self.Export:Fire(self._current_tab)
--- 	end
--- 	export_client.MouseButton1Down:Connect(export)
--- 	export_server.MouseButton1Down:Connect(export)
-
 -- 	-- dragging/minimize logic
 -- 	drag_btn.MouseButton1Down:Connect(function(x, y)
 -- 		local click_or_hold = nil
@@ -66,11 +135,7 @@ return interface
 -- 			local offset = ui.Container.AbsolutePosition - Vector2.new(mouse.X, mouse.Y)
 
 -- 			runservice:BindToRenderStep("Configify_DragStart", Enum.RenderPriority.Last.Value + 10, function(dt)
--- 				local goal = UDim2.fromOffset(
--- 					mouse.X + offset.X, 
--- 					mouse.Y + offset.Y + env_container.Size.Y.Offset + tab_container.Size.Y.Offset
--- 				)
--- 				ui.Container.Position = ui.Container.Position:Lerp(goal, DRAG_LERP_ALPHA)
+				
 -- 			end)
 
 -- 			local c
@@ -95,22 +160,6 @@ return interface
 -- 			click_or_hold = nil
 
 -- 			-- Click/minimize behavior
--- 			env_container.Visible = not env_container.Visible
--- 			ui.Container.ScrollingFrame.Visible = not ui.Container.ScrollingFrame.Visible
--- 			tab_container.Visible = not tab_container.Visible
--- 			resize_btn.Visible = not resize_btn.Visible
-
--- 			local container_size_Y = ui.Container.Size.Y.Offset
--- 			local stored_size_Y = ui.Container:GetAttribute("PreviousSize")
-
--- 			if container_size_Y == 0 then
--- 				-- was closed, open
--- 				ui.Container.Size = UDim2.fromOffset(ui.Container.Size.X.Offset, stored_size_Y or 0)
--- 			else
--- 				-- was open, close
--- 				ui.Container:SetAttribute("PreviousSize", ui.Container.Size.Y.Offset)
--- 				ui.Container.Size = UDim2.fromOffset(ui.Container.Size.X.Offset, 0)
--- 			end
 -- 		end)
 -- 	end)
 
@@ -121,12 +170,7 @@ return interface
 -- 		ui.Container.Size = UDim2.fromOffset(ui.Container.Size.X.Offset, math.max(0, ui.Container.Size.Y.Offset))
 
 -- 		runservice:BindToRenderStep("Configify_ResizeStart", Enum.RenderPriority.Last.Value + 10, function(dt)
--- 			local goal = UDim2.fromOffset(
--- 				math.max(ui.Container.Size.X.Offset - (mouse_delta.X * RESIZING_SPEED), MIN_SIZE_X),
--- 				ui.Container.Size.Y.Offset - (mouse_delta.Y * RESIZING_SPEED)
--- 			)
-
--- 			ui.Container.Size = ui.Container.Size:Lerp(goal, RESIZE_LERP_ALPHA)
+			
 
 -- 			local new_pos = Vector2.new(mouse.X, mouse.Y)
 -- 			mouse_delta = mouse_pos - new_pos
@@ -145,30 +189,6 @@ return interface
 -- 			c = nil
 -- 		end)
 -- 	end)
-
--- 	local function setup_hover(ui_obj: Frame)
--- 		ui_obj.MouseEnter:Connect(function(x, y)
--- 			self:_HoverStart(ui_obj)
--- 		end)
-
--- 		ui_obj.MouseLeave:Connect(function(x, y)
--- 			self:_HoverStop(ui_obj)
--- 		end)
--- 	end
-
--- 	setup_hover(env_container.ClientBtn)
--- 	setup_hover(env_container.ServerBtn)
-
--- 	env_container.ClientBtn.MouseButton1Click:Connect(function()
--- 		self:_SelectEnvironment("Client")
--- 	end)
-
--- 	env_container.ServerBtn.MouseButton1Click:Connect(function()
--- 		self:_SelectEnvironment("Server")
--- 	end)
-
--- 	--Init
--- 	self:_SelectEnvironment("Client")
 -- end
 
 -- function configify_ui:AddTab(module_name, env_type: "Client" | "Server")
@@ -642,22 +662,6 @@ return interface
 -- 	end)
 
 -- 	return config
--- end
-
--- function configify_ui:_HoverStart(ui_object)
--- 	for i, v in ui_object:GetDescendants() do
--- 		if v:IsA("UIStroke") then
--- 			v.Color = COLOR_E
--- 		end
--- 	end
--- end
-
--- function configify_ui:_HoverStop(ui_object)
--- 	for i, v in ui_object:GetDescendants() do
--- 		if v:IsA("UIStroke") then
--- 			v.Color = COLOR_D
--- 		end
--- 	end
 -- end
 
 -- function configify_ui:_ConfigToggleClick(ui_object)

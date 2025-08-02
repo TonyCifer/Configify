@@ -6,12 +6,12 @@ return {
     ["IS_SERVER"] = run_service:IsServer(),
 
     -- CAN CHANGE (SETTINGS)
-    ["WHITELIST_ENABLED"] = true,
+    ["WHITELIST_ENABLED"] = false,
     ["WHITELIST"] = {
         -- ["GROUP_ID"] = nil,
         -- ["GROUP_MIN_RANK"] = 255,
         ["USERS"] = { -- ids
-            2004390,
+            
         }
     },
 

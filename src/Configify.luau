@@ -16,52 +16,13 @@ function configify.new()
 
 	self:_Init()
 
+	_G.Configify = self
+	_G.Cfg = self
+
 	return self
 end
 
-function configify:_Init()
-	if const.IS_CLIENT then
-		if const.WHITELIST_ENABLED and not util.IsWhitelisted(players.LocalPlayer) then
-			return
-		end
-
-		self.local_plr = players.LocalPlayer
-		self._interface = interface.new()
-
-		if script:FindFirstChild("ConfigifyCommunication") then
-			self:_ListenForComm()
-		else
-			local check
-			check = script.ChildAdded:Connect(function(child)
-				if not (child.Name == "ConfigifyCommunication") then
-					return
-				end
-
-				check:Disconnect()
-				check = nil
-
-				self:_ListenForComm()
-			end)
-		end
-	elseif const.IS_SERVER then
-		self.comm = Instance.new("RemoteEvent")
-		self.comm.Name = "ConfigifyCommunication"
-		self.comm.Parent = script
-
-		self.comm.OnServerEvent:Connect(function(player, ...)
-			self:_HandleConfigChangeRequest(player, ...)
-		end)
-
-		self:_UpdateClients(players:GetPlayers())
-
-		players.PlayerAdded:Connect(function(player)
-			self:_UpdateClients{player}
-		end)
-	end
-
-	_G.Configify = self
-	_G.Cfg = self
-end
+-- TODO: Finish Interface.lua + cfg:Set()
 
 function configify:Set(name: string, tip: string, initial: ValidConfig, min, max)
 	local val_t = typeof(initial)
@@ -93,7 +54,59 @@ function configify:Set(name: string, tip: string, initial: ValidConfig, min, max
 	end
 end
 
-if const.IS_SERVER then
+if const.IS_CLIENT then
+	-- check whitelist, create interface, setup client/server architecture
+	function configify:_Init()
+		if const.WHITELIST_ENABLED and not util.IsWhitelisted(players.LocalPlayer) then
+			return
+		end
+
+		self._interface = interface.new()
+
+		local comm = script:FindFirstChild("CfgComm") or script:WaitForChild("CfgComm", 60)
+		if not comm then
+			return -- no comm remote in 60s, not using configify on the server
+		end
+
+		self:_ListenForComm(comm)
+	end
+
+	-- listen to server config changes (all clients synced)
+	function configify:_ListenForComm(comm: RemoteEvent)
+		self.comm = comm
+		self.comm.OnClientEvent:Connect(function(serialized_configs)
+			local configs = util.DeserializeConfigs(serialized_configs)
+			print(configs)
+		end)
+	end
+elseif const.IS_SERVER then
+	-- create client/server bridge
+	-- handle init/update for current/future clients
+	function configify:_Init()
+		self.comm = Instance.new("RemoteEvent")
+		self.comm.Name = "CfgComm"
+		self.comm.Parent = script
+
+		self.comm.OnServerEvent:Connect(function(player, ...)
+			self:_HandleConfigChangeRequest(player, ...)
+		end)
+
+		self:_UpdateClients(players:GetPlayers())
+
+		players.PlayerAdded:Connect(function(player)
+			self:_UpdateClients{player}
+		end)
+	end
+
+	-- listen to clients requesting config changes
+	function configify:_HandleConfigChangeRequest(player, ...)
+		if const.WHITELIST_ENABLED and not util.IsWhitelisted(player) then
+			return
+		end
+
+		print(`Client: {player.Name} has requested a config change: {...}`)
+	end
+
 	-- sync all clients with the same configs
 	function configify:_UpdateClients(players_list: {Player})
 		for _, player in players_list do
@@ -103,23 +116,6 @@ if const.IS_SERVER then
 
 			self.comm:FireClient(player, util.SerializeConfigs(self._configs))
 		end
-	end
-	
-	-- listen to clients requesting config changes
-	function configify:_HandleConfigChangeRequest(player)
-		if const.WHITELIST_ENABLED and not util.IsWhitelisted(player) then
-			return
-		end
-
-	end
-elseif const.IS_CLIENT then
-	function configify:_ListenForComm()
-		self.comm = script:FindFirstChild("ConfigifyCommunication")
-		self.comm.OnClientEvent:Connect(function(serialized_configs)
-			local configs = util.DeserializeConfigs(serialized_configs)
-
-			print(configs)
-		end)
 	end
 end
 

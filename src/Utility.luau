@@ -43,9 +43,18 @@ function cfg_util.IsWhitelisted(player: Player)
     local group_min_rank = const.WHITELIST.GROUP_MIN_RANK
     local user_ids = const.WHITELIST.USERS
 
+	if not const.WHITELIST_ENABLED then
+		return true
+	end
+
     if table.find(user_ids, player.UserId) then
         return true
     elseif group_id and group_id ~= "" then
+		if not group_min_rank then
+			warn(`[Configify]: GroupID is provided but no MinRank is provided.`)
+			return false
+		end
+
         if player:GetRankInGroup(group_id) >= group_min_rank then
             return true
         end

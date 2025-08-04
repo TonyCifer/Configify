@@ -9,8 +9,12 @@ local players = game:GetService("Players")
 local player = players.LocalPlayer
 local player_gui = player:WaitForChild("PlayerGui")
 
-local const = require(script.Parent.Constants)
 local assets = script.Parent:WaitForChild("Assets")
+
+local button = require(script.Button)
+local tab = require(script.Tab)
+local util = require(script.Parent.Utility)
+local const = require(script.Parent.Constants)
 
 local interface = {}
 interface.__index = interface
@@ -27,6 +31,8 @@ function interface.new()
 	self.export_server = self.tab_container.Server.Export
 	self.export_client = self.tab_container.Client.Export
 
+	self._tabs = {}
+
 	self:_Init()
 
 	return self
@@ -35,10 +41,41 @@ end
 function interface:_Init()
 	self.ui.Parent = player_gui
 
-	self:_SetupDragAndResize()
-	self:_ConnectButtons()
+	self.cl_btn = button.new(self.env_container.ClientBtn, function()
+		self:_SelectEnv("Client")
+	end)
 
+	self.sv_btn = button.new(self.env_container.ServerBtn, function()
+		self:_SelectEnv("Server")
+	end)
+
+	self:_SetupDragAndResize()
 	self:_SelectEnv("Client")
+end
+
+function interface:AddConfig(config_name)
+	-- we need to check if a tab already exists for this config yet
+	local module_name = util.GetTabName(4)
+	local tab_obj = self._tabs[module_name]
+	local env_type = const.IS_CLIENT and "Client" or "Server"
+
+	if not tab_obj then
+		tab_obj = self:_AddTab(module_name, env_type)
+	end
+
+	-- do something with tab_obj
+end
+
+function interface:_AddTab(module_name, env_type)
+	local tab_obj = tab.new(module_name, env_type, function()
+		self:_SelectTab(module_name)
+	end)
+
+	tab_obj:SetVisible(env_type == self._curr_env and true or false)
+
+	self._tabs[module_name] = tab_obj
+
+	return tab_obj
 end
 
 function interface:_SetupDragAndResize()
@@ -80,43 +117,20 @@ function interface:_SetupDragAndResize()
 	-- end)
 end
 
-function interface:_ConnectButtons()
-	local cl_btn = self.env_container.ClientBtn
-	local sv_btn = self.env_container.ServerBtn
-
-	local function hover(toggle, ui_obj)
-		for _, v in ui_obj:GetDescendants() do
-			if v:IsA("UIStroke") then
-				v.Color = toggle and const.UI.COLOR_E or const.UI.COLOR_D
-			end
-		end
+function interface:_SelectEnv(env: "Client" | "Server")
+	if self._curr_env == env then
+		return
 	end
 
-	cl_btn.MouseEnter:Connect(function()
-		hover(true, cl_btn)
-	end)
-	cl_btn.MouseLeave:Connect(function()
-		hover(false, cl_btn)
-	end)
+	for tab_name, tab_obj in self._tabs do
+		tab_obj:SetVisible(tab_obj.env == env and true or false)
+	end
 
-	sv_btn.MouseEnter:Connect(function()
-		hover(true, sv_btn)
-	end)
-	sv_btn.MouseLeave:Connect(function()
-		hover(false, sv_btn)
-	end)
-
-	self.env_container.ClientBtn.MouseButton1Click:Connect(function()
-		self:_SelectEnv("Client")
-	end)
-
-	self.env_container.ServerBtn.MouseButton1Click:Connect(function()
-		self:_SelectEnv("Server")
-	end)
+	self._curr_env = env
 end
 
-function interface:_SelectEnv(env: "Client" | "Server")
-	print(`Selecting env: {env}`)
+function interface:_SelectTab(module_name)
+	print(`Tried to select tab of name: {module_name}`)
 end
 
 return interface
@@ -191,84 +205,7 @@ return interface
 -- 	end)
 -- end
 
--- function configify_ui:AddTab(module_name, env_type: "Client" | "Server")
--- 	-- Make folder for any config for this tab
--- 	local tab_folder = create(
--- 		"Folder", {
--- 			["Name"] = module_name,
--- 			["Parent"] = self._ScreenGui.Container.ScrollingFrame
--- 		},
-
--- 		create(
--- 			"UIListLayout", {
--- 				["HorizontalAlignment"] = Enum.HorizontalAlignment.Center,
--- 				["Padding"] = UDim.new(0, 5)
--- 			}
--- 		),
-
--- 		create(
--- 			"UIPadding", {
--- 				["PaddingBottom"] = UDim.new(0, 10),
--- 				["PaddingTop"] = UDim.new(0, 10),
--- 				["PaddingLeft"] = UDim.new(0, 10),
--- 				["PaddingRight"] = UDim.new(0, 10),
--- 			}
--- 		)
--- 	)
-
--- 	-- Make tab button
--- 	local tab: TextButton = create(
--- 		"TextButton", {
--- 			["Name"] = module_name,
--- 			["BackgroundColor3"] = COLOR_C,
--- 			["Font"] = Enum.Font.SourceSans,
--- 			["Text"] = module_name,
--- 			["TextColor3"] = Color3.fromRGB(255, 255, 255),
--- 			["TextScaled"] = true,
--- 			["Size"] = UDim2.new(0, 80, 1, 0),
--- 			["AutoButtonColor"] = false,
--- 			["LayoutOrder"] = 1,
--- 		},
-
--- 		create(
--- 			"UIStroke", {
--- 				["Color"] = COLOR_D,
--- 				["ApplyStrokeMode"] = Enum.ApplyStrokeMode.Border
--- 			}
--- 		)
--- 	)
-
--- 	if not self._current_env or self._current_env ~= env_type then
--- 		tab.Visible = false
--- 	end
-
--- 	tab.Parent = self._ScreenGui.Container.TabContainer[env_type]
-
--- 	-- if not self._current_tab then
--- 	--     self:_SelectTab(module_name)
--- 	-- end
-
--- 	tab.MouseEnter:Connect(function()
--- 		self:_HoverStart(tab)
--- 	end)
-
--- 	tab.MouseLeave:Connect(function()
--- 		self:_HoverStop(tab)
--- 	end)
-
--- 	tab.MouseButton1Click:Connect(function()
--- 		self:_SelectTab(module_name)
--- 	end)
--- end
-
 -- function configify_ui:_SelectEnvironment(env_name)
--- 	local container = self._ScreenGui.Container
--- 	local other_env = env_name == "Client" and "Server" or "Client"
-
--- 	if self._current_env and self._current_env == env_name then
--- 		return
--- 	end
-
 -- 	if self._current_tab then
 -- 		self:_SelectTab(nil)
 -- 	end
